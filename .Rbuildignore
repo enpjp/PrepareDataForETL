@@ -1,0 +1,5 @@
+^data-raw$
+^LICENSE\.md$
+^PrepareDataForETL\.Rproj$
+^\.Rproj\.user$
+^\.Rd2pdf$
