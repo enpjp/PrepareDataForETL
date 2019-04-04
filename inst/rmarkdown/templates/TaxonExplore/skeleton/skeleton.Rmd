@@ -13,15 +13,25 @@ output:
 
 ## Introduction
 
-This is a skeleton document illustration several type of plot. Maps of Leicestershire are included along with a set of data for the Green Carpet moth in the same county.
+This is a skeleton document illustration several type of plot. 
+Maps of Leicestershire are included along with a set of data for the 
+Green Carpet moth in the same county.
 
-The data format is fussy, but other templates are in the pipeling to assist with processing spreadsheet data into the format used here.
+The data format is fussy, but other templates are in the pipeline to assist with processing spreadsheet data into the format used here.
 
-Your text can be inserted anywhere between the code block and formatted with markdown.
+Your text can be inserted anywhere between the code block and formatted 
+with markdown.
 
 See https://www.markdownguide.org/
 
-Code can also be adjusted by hand. Interactive help is coming soon.
+Markdown is designed to be simple and is worth mastering becuase it makes it
+possible to automate the production of complex documents. These days authors of
+books often use markdown because of its simplicity.
+
+Code is inserted into the special blocks and can be run in stages within 
+R Studio. Code can also be adjusted by hand. Interactive help is coming soon.
+
+My aim is to automate as much as possible within the template.
 
 
 
