@@ -1,5 +1,4 @@
 name: "01: A demonstration template"
-description: Derives a series of plots using the package data.
-Not really intended for production use, but ensures that all the required
-packages are installed and working correctly.
+description: >
+ A demonstration template
 create_dir: true
