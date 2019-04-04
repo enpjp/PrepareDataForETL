@@ -13,11 +13,9 @@ output:
 
 ## Introduction
 
-# Diagrams for Acdemic Paper
+This is a skeleton document illustration several type of plot. Maps of Leicestershire are included along with a set of data for the Green Carpet moth in the same county.
 
-These diagrams been created dynamically. The version with the full background code will be lodged with the data for reproducibility. The released base data will be annoymised using the guidelines published by Butterfly Conservation and contains no personal details that can be associated with individual records.
-
-The appendices were created prior to the summary diagrams. This 'back to front' workflow is needed to simplify the narrative, but adds complexity to the production of this document as it is necessary to ensure that the execution order of the code chunks do not affect the results. Note that the position of the setup option is at the head of the document.
+The data format is fussy, but other templates are in the pipeling to assist with processing spreadsheet data into the format used here.
 
 ## Code setup
 
@@ -109,165 +107,16 @@ The data has been cleaned using the PrepareDataForETL package written by author 
 ### Records for Green Carpet Moth 
 
 ```{r Get-data }
-# Note that we are running this implicitly from the data-raw directory
-# Changing the source location will require changing the path
-#Green.Carpet.Data <- 
-#  readRDS("../data-raw/Green.Carpet.Data.Rds") %>% as.data.frame()
 
- # This is already part of the package so no path needed.
+ # These are already part of the package so no path needed.
 data("Green.Carpet.Data")
+
 # This is already part of the package so no path needed.
 data("leics") 
-ll_leics_df <- readRDS("../data-raw/ll_leics_df.rds") %>% as.data.frame() 
-# Outline of Leicestershire
 
-# To work with ggplot we need to add lat long data.
-#lat.long <- GBNG.to.Lat.Long(Green.Carpet.Data$Gridref)
-#Green.Carpet.Data <- cbind(Green.Carpet.Data, lat.long)
-# We did this in ExtractAndSave.Rds
+# This package also saves images in an image subdirectory
+dir.create("images", showWarnings = FALSE)
 
-# Now add the polygon names enclosing each point
-# First add a column for all areas then paste matching polygons.
-# Filtering can then be made with regular expressions.
-Green.Carpet.Data$Area <- "All Records"
-area.name.list <- levels(ll_leics_df$Landscape)
-# Really can't help using a for loop here, but notice that we build a list up by
-# using row numbers and pasting as this is really fast.
-for (area.name in area.name.list) {
-
-    polygon.rows.area <- grepl(area.name,ll_leics_df$Landscape )
-    polygon.rows.to.keep <- which(polygon.rows.area)
-    LL_polygon <-ll_leics_df[polygon.rows.to.keep,]
-    # Now select points in the polygon
-    paste.points <- as.logical(point.in.polygon(Green.Carpet.Data$Long, 
-    Green.Carpet.Data$Lat,
-    LL_polygon$long, 
-    LL_polygon$lat ))
-    
-    paste.points.rows <- which(paste.points)
-    # Now paste the area name into the selected rows.
-    Green.Carpet.Data$Area[paste.points.rows] <- 
-    paste(Green.Carpet.Data$Area[paste.points.rows],area.name, sep = ", " )
-}
-
-# Examination of the data shows some evidence for multiple broods having 
-# different distributions
-# Here we classify the broods by examination of flight time
-# Now to try and use k-means clustering to identify the broods.
-
-# We are going to cluster on these three variables.
-temp.data.to.cluster <- Green.Carpet.Data[,c("Long","Lat","DOY")]
-# Convert each column to numeric
-temp.data.to.cluster <- 
-  sapply(temp.data.to.cluster, as.numeric) %>% as.data.frame()
-
-# Normalise between 0 and 1.
-# And add a weighting to DOY as we expect this to be most significant factor.
-# Any value larger than 8 give the same results.
-temp.weight <- 8
-temp.data.to.cluster.n <- NULL
-temp.data.to.cluster.n$Lat <- 
-  (temp.data.to.cluster$Lat - min(temp.data.to.cluster$Lat)) / 
-  (max(temp.data.to.cluster$Lat) - min(temp.data.to.cluster$Lat))
-temp.data.to.cluster.n$Long <- 
-  (temp.data.to.cluster$Long - min(temp.data.to.cluster$Long)) / 
-  (max(temp.data.to.cluster$Long) - min(temp.data.to.cluster$Long))
-temp.data.to.cluster.n$DOY <- 
-  ((temp.data.to.cluster$DOY - min(temp.data.to.cluster$DOY)) / 
-     (max(temp.data.to.cluster$DOY) - 
-        min(temp.data.to.cluster$DOY)))*temp.weight
-
-# Convert each column to numeric
-temp.data.to.cluster.n <- 
-  sapply(temp.data.to.cluster.n, as.numeric) %>% as.data.frame()
-
-# Experimentation showed that 4 clusters are optimal for this data
-number.clusters <- 4
-
-temp.clusters <- kmeans(temp.data.to.cluster.n, number.clusters)
-
-# Check
-pjp.check <- temp.clusters
-
-temp.clusters.centers.df <- temp.clusters$centers %>% as.data.frame()
-temp.clusters.centers.df <- temp.clusters.centers.df[c("DOY")]
-temp.clusters.centers.df$Cluster <- row(temp.clusters.centers.df)
-
-# K-means is a randomised algorithm so the numerical order of the peaks is 
-# not a constant.
-# Now to reorder 
-
-temp.clusters.centers.df <- 
-  temp.clusters.centers.df[ order(temp.clusters.centers.df$DOY),]
-row.names(temp.clusters.centers.df) <- NULL # reset the row numbers
-# We now have the custers in order.
-
-# Now to look at the real none normalised values
-temp.clusters.centers.df$DOY <- 
-  temp.clusters.centers.df$DOY*(max(temp.data.to.cluster$DOY) - 
-                                  min(temp.data.to.cluster$DOY))/temp.weight + 
-                                  min(temp.data.to.cluster$DOY)
-# View(temp.real.centers)
-# This looks sensible
-
-# Apply the groups to the source data
-
-Green.Carpet.Data$Group <- temp.clusters$cluster %>% as.factor()
-
-# Double brooded population
-
-# We will start by marking all records as double brooded, then mark the single brood
-
-Green.Carpet.Data$Broods <- "Double"
-
-# The clustering algorithm created four clusters
-
-chart.check <- as.integer(temp.clusters.centers.df[3,2]) 
-# The third value in the second column represents the single brood.
-temp.single <- as.integer(Green.Carpet.Data$Group) == chart.check
-
-temp.rows <- which(temp.single) # Find the rows
-Green.Carpet.Data$Broods[temp.rows] <- "single"
-
-# We can also make a consistent numbering for the ordering of the peaks
-Green.Carpet.Data$Brood.ordered <- 1 # Set new variable to 1
-
-# We have four clusters so we can set Brood.ordered as 1,2,3, 4 in order.
-for (i in 1:4) {
-temp.single <- 
-  as.integer(Green.Carpet.Data$Group) == 
-  as.integer(temp.clusters.centers.df[i,2])
-temp.rows <- which(temp.single) # Find the rows
-Green.Carpet.Data$Brood.ordered[temp.rows] <- i # Done.
-}
-
-# We can now find the peak density for each brood
-
-Brood.peaks <- 1 # Intialise a variable
-Brood.peaks.date <- 1
-
-# Get the data we neeed
-temp.brood.data <- Green.Carpet.Data[,c("DOY","Brood.ordered")]
-# Make it numeric
-temp.brood.data  <- sapply(temp.brood.data, as.numeric) %>% as.data.frame()
-
-# Now iterate over the four peaks.
-#Note that this method finds the nearest point to the true peak so 
-# tyically has an error of +-0.5 day.
-for (i in 1:4) {
-temp.brood.data.select <- temp.brood.data[temp.brood.data$Brood.ordered == i,]
-temp.peak.dist <- density(temp.brood.data.select$DOY)
-# Find the max y row
-temp.max.y <- which.max(temp.peak.dist$y)
-# Now look up the value of x in this row and assign it to brood peak
-Brood.peaks[i] <- temp.peak.dist$x[temp.max.y]
-Brood.peaks.date[i] <- 
-  format(strptime(Brood.peaks[i], format="%j"), format="%d-%B")
-}
-
-# Clean up
-rm(list = ls(pattern = "temp*"))
-    
 ```
 
 
@@ -289,7 +138,7 @@ The data comprises of `r nrow(Green.Carpet.Data)` observations.  Several calcula
 # Note that as the data preparation is now complete, 
 # this code is all about visualisation.
 data.to.plot <- Green.Carpet.Data
-my.map <- ggplot(data = ll_leics_df) + 
+my.map <- ggplot(data = leics) + 
   geom_path( aes(x = long, y = lat, group = group)) +
   coord_map(projection = "mercator") + 
   geom_point(data = data.to.plot, aes(x = Long, y = Lat, colour = "black")) +
@@ -346,50 +195,12 @@ rm(list = ls(pattern = "temp*"))
 
 ```
 
-The chart above shows the phenology for all records. There are clearly mixed distributions in the plot so the following section uses a k-means clusting to separate them.
 
-## Clustering by K means algorithm
-
-A more sophisticated method to separate the data is to use the well founded k-means method to cluster the data. Latitude, Longitude and Day of Year (DOY) were used as variables in the algorithm. After normalisation of all variables to the range 0 to 1 a multiplication weighting of 8 was applied to the DOY. This value was selected empirically, but in practice any higher value did not affect the outcome.  Unexpectedly, 4 clusters gave the most compelling results.
-
-Considering the 3rd cluster as single brooded and the other three clusters as double brooded, gave almost identical results to the simple selection by day of year window. 
-
-This is an unexpected result and currently leaves open the question on what charts are the most useful to generate next.
-
-
-```{r k-means}
-
- temp.my.plot <- ggplot(Green.Carpet.Data,
-                        aes(x=as.numeric(Green.Carpet.Data$DOY), 
-                            group = Brood.ordered,  
-                            fill = as.character(Brood.ordered)
-                            )) + 
-                            labs(fill='Brood cluster') +
-   geom_density(bw = 4, alpha=.8 ) +
-   labs(title="Phenology by K means cluster",x="Day of Year", y = "Density") +
-  geom_vline(aes(xintercept=Brood.peaks[1]), color="blue") +
-  geom_vline(aes(xintercept=Brood.peaks[2]), color="blue") +
-  geom_vline(aes(xintercept=Brood.peaks[3]), color="blue") +
-  geom_vline(aes(xintercept=Brood.peaks[4]), color="blue") +
-   xlim(1, 365)
-
-
-    
- 
-temp.my.plot
-
-ggsave("images/Phenology-kmeans.png", device = "png")
-
-# Clean up
-rm(list = ls(pattern = "temp*")) 
-
-
-```
-The vertical lines mark the brood peak dates of `r Brood.peaks.date`.
 
 
 ## Phenology by Year including k-means groups
 
+This plot uses a heatmap type approach coupled with filtering 
 ```{r heatmap}
 
 # Now to try an create a summary.
@@ -414,25 +225,28 @@ temp.data.to.plot$DOY <- temp.data.to.plot$DOY %>% as.integer()
 #FUN=sum)
 
 # Set Brood.ordered as character. Nicer to plot.
-temp.data.to.plot$Brood.ordered <- 
-  temp.data.to.plot$Brood.ordered %>% as.character()
+#temp.data.to.plot$Brood.ordered <- 
+#  temp.data.to.plot$Brood.ordered %>% as.character()
 
 # We are now ready to make a heatmap using geom_tile to stack the slices.
+# The x scale is DOY so to plot all the data use 1, 365.
+# The y-scale is year,
+# If data is outside of these ranges you will get warning along side your plots.
 temp.my.plot <- ggplot(data = temp.data.to.plot ) + 
-   scale_x_continuous(limits = c(100, 300), expand = c(0, 0)) +
-  scale_y_continuous(limits = c(1960, 2014), expand = c(0, 0)) + 
+   scale_x_continuous(limits = c(1, 365), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(1960, 2015), expand = c(0, 0)) + 
   
-  labs(fill='Brood cluster') +
+  labs(fill='Observations') +
   geom_tile(aes(x = DOY, 
                         y = YYYY, 
                         group = DOY, 
-                        fill= Brood.ordered)) +
+                        fill= "red")) +
   ggtitle("Phenology chart by DOY number and year") +
 
-  geom_vline(aes(xintercept=Brood.peaks[1]), color="blue") +
-  geom_vline(aes(xintercept=Brood.peaks[2]), color="blue") +
-  geom_vline(aes(xintercept=Brood.peaks[3]), color="blue") +
-  geom_vline(aes(xintercept=Brood.peaks[4]), color="blue") +
+  # geom_vline(aes(xintercept=Brood.peaks[1]), color="blue") +
+  # geom_vline(aes(xintercept=Brood.peaks[2]), color="blue") +
+  # geom_vline(aes(xintercept=Brood.peaks[3]), color="blue") +
+  # geom_vline(aes(xintercept=Brood.peaks[4]), color="blue") +
  #xlim(1,52,  expand = c(0, 0)) + ylim(1960, 2015,  expand = c(0, 0)) +
   theme(
           legend.position="right",
@@ -448,8 +262,7 @@ rm(list = ls(pattern = "temp*"))
 
 ```
 
-Marking the broods on the phenology chart reveals a complex picture that changes through time. The single brood 3 is constant through time. Broods 2 and 4 occur occasionally prior to 2000. Brood 1 starts post 1990 and post 2000 becomes an annual feature.
-Note that prior to 1990 the population appears to be single brooded. After 1990 flight times start to change and by 2000 it appears to be double brooded. 
+ 
 
 Plotting the data by group, shows that the single brooded group is separate to the other three groups which overlap in distribution.
 
@@ -468,15 +281,12 @@ temp.data.to.plot$YYYY <- temp.data.to.plot$YYYY %>% as.integer()
 temp.data.to.plot$DOY <- temp.data.to.plot$DOY %>% as.integer()
 temp.data.to.plot$Lat <- temp.data.to.plot$Lat %>% as.double()
 temp.data.to.plot$Long <- temp.data.to.plot$Long %>% as.double()
-temp.data.to.plot$Broods <- temp.data.to.plot$Broods %>% as.character()
 
 # We are now ready to make a heatmap.
 
 temp.my.plot <- ggplot() + 
   geom_point(data = temp.data.to.plot, aes(x = Lat, 
-                                           y = YYYY, 
-                                           group = Broods, 
-                                           colour= Broods 
+                                           y = YYYY
                                            )) +
   
   geom_tile(alpha = 0.8) +
@@ -511,15 +321,12 @@ temp.data.to.plot$YYYY <- temp.data.to.plot$YYYY %>% as.integer()
 temp.data.to.plot$DOY <- temp.data.to.plot$DOY %>% as.integer()
 temp.data.to.plot$Lat <- temp.data.to.plot$Lat %>% as.double()
 temp.data.to.plot$Long <- temp.data.to.plot$Long %>% as.double()
-temp.data.to.plot$Broods <- temp.data.to.plot$Broods %>% as.character()
 
 # We are now ready to make a heatmap.
 
 temp.my.plot <- ggplot() + 
   geom_point(data = temp.data.to.plot, aes(x = Long, 
-                                           y = YYYY, 
-                                           group = Broods, 
-                                           colour= Broods 
+                                           y = YYYY
                                            )) +
   
   geom_tile(alpha = 0.8) +
@@ -542,196 +349,25 @@ rm(list = ls(pattern = "temp*"))
 
 
 
-
 \newpage
-## Plot by brood
 
-```{r Facet distribution plot}
-# Now go for an advanced plot showing the two populations in different colours
+### Density distribution
 
-# Mixed population
+```{r Density distribution}
+
 
 data.to.plot <- Green.Carpet.Data
-
-# How similar are the clusters?
-# This could have been set up as a loop, but this is easier to follow.
-temp.single.cluster <- Green.Carpet.Data$Brood.ordered == 1
-temp.rows.cluster <- which(temp.single.cluster) # Find the rows
-temp.cluster.1 <- Green.Carpet.Data[temp.rows.cluster,c("Lat","Long")] 
-# Now find the members of the cluster.
-
-# Repeat for each of the clusters.
-
-temp.single.cluster <- Green.Carpet.Data$Brood.ordered == 2
-temp.rows.cluster <- which(temp.single.cluster) # Find the rows
-temp.cluster.2 <- Green.Carpet.Data[temp.rows.cluster,c("Lat","Long")] 
-# Now find the members of the cluster.
-
-temp.single.cluster <- Green.Carpet.Data$Brood.ordered == 3
-temp.rows.cluster <- which(temp.single.cluster) # Find the rows
-temp.cluster.3 <- Green.Carpet.Data[temp.rows.cluster,c("Lat","Long")] 
-# Now find the members of the cluster.
-
-temp.single.cluster <- Green.Carpet.Data$Brood.ordered == 4
-temp.rows.cluster <- which(temp.single.cluster) # Find the rows
-temp.cluster.4 <- Green.Carpet.Data[temp.rows.cluster,c("Lat","Long")] 
-# Now find the members of the cluster.
-
-
-
-# Set Brood.ordered as character. Nicer to plot.
-data.to.plot$Brood.ordered <- data.to.plot$Brood.ordered %>% as.character()
-    area.name <- "All data by brood cluster"
     
     # Build the map in layers
-     my.map <- ggplot() +  ggtitle(area.name) + 
-       geom_path(data =ll_leics_df, aes(x = long, y = lat, group = group)) + 
+     my.map <- ggplot() +  ggtitle("Density distribution") + 
+       geom_path(data =leics, aes(x = long, y = lat, group = group)) + 
 
-       # Pure double brooded density and points
-       stat_density2d(  aes( x = Long, 
-                        y = Lat, 
-                        fill = ..level.., 
-                        alpha = ..level.. ,
-                        colour = Brood.ordered ), 
-                        size = .5, bins = 8, 
-                        data = data.to.plot, 
-                        geom = "polygon", 
-                        contour = TRUE, 
-                        show.legend = FALSE, 
-                        inherit.aes = FALSE) +
-       # Uncomment the lines below if you want to see the data points.
-      # geom_point(data = data.to.plot, aes(x = Long, y = Lat, 
-       #colour = Brood.ordered, alpha=.8)) +
-          coord_map(projection = "mercator") + 
-       theme(axis.line=element_blank(),
-          axis.text.x=element_blank(),
-          axis.text.y=element_blank(),
-          axis.ticks=element_blank(),
-          axis.title.x=element_blank(),
-          axis.title.y=element_blank(),
-          legend.position="none",
-          panel.background=element_blank(),
-          panel.border=element_blank(),
-          panel.grid.major=element_blank(),
-          panel.grid.minor=element_blank(),
-          plot.background=element_blank()) +
-        geom_polypath(
-         aes( long, lat, group=group),
-         sp_diff_df,
-         fill="white",
-         alpha=1
-       )  
-     
-      my.map + facet_wrap( . ~ Brood.ordered) # add the facet plots.
-     
-     
- #  print(my.map)
-#     cat('\r\n\r\n') # Add new lines
-    
- #    Phenology.Plot(area.name, data.to.plot$DOY)
- #    cat('\r\n\r\n')
-      
-      ggsave("images/Distribution-facet.png", device = "png")
-      
-      
-# Clean up
-     rm(data.to.plot, my.map, area.name)
-     rm(list = ls(pattern = "temp*"))
-     
- 
-```
-
-The plots above suggest that brood 1, 2 and 4 represent an single population as the observed distributions are visually identical. Brood 3, the single brooded population, is distinguished by a separate distribution as well as flight time.
-
-\newpage
-## Single and double broods
-
-From the data above, broods 1,2 and 4 have been marked as double brooded and brood 3 marked as single brooded.
-
-```{r Post 1985 distribution}
-# Now go for an advanced plot showing the two populations in different 
-# colours and the post 1985 population
-
-# Mixed population
-temp.filter.year <- 1900
-data.to.plot <- Green.Carpet.Data[Green.Carpet.Data$YYYY > temp.filter.year,]
-    area.name <- c("All data")
-    
-    # Build the map in layers
-     my.map <- ggplot() +  ggtitle(area.name) + 
-       geom_path(data =ll_leics_df, aes(x = long, y = lat, group = group)) + 
-
-       # Pure double brooded density and points
-       stat_density2d(  aes(x = Long, 
-                            y = Lat, 
-                            fill = ..level.., 
-                            alpha = ..level.. ,
-                            colour = Broods ), 
-                            size = .5, 
-                            bins = 8, 
-                            data = data.to.plot, 
-                            geom = "polygon",
-                            contour = TRUE, 
-                            show.legend = FALSE, 
-                            inherit.aes = FALSE) +
-       geom_point(data = data.to.plot, 
-                  aes(x = Long, y = Lat, colour = Broods, alpha=.8)) +
-          coord_map(projection = "mercator") + 
-       theme(axis.line=element_blank(),
-          axis.text.x=element_blank(),
-          axis.text.y=element_blank(),
-          axis.ticks=element_blank(),
-          axis.title.x=element_blank(),
-          axis.title.y=element_blank(),
-          legend.position="none",
-          panel.background=element_blank(),
-          panel.border=element_blank(),
-          panel.grid.major=element_blank(),
-          panel.grid.minor=element_blank(),
-          plot.background=element_blank()) +
-        geom_polypath(
-         aes( long, lat, group=group),
-         sp_diff_df,
-         fill="white",
-         alpha=1
-       )  + facet_wrap( . ~ Broods) # add the facet plots.
-     
-     
-   print(my.map)
-   ggsave("images/Two-broods.png", device = "png")
-   
-# Clean up
-     rm(data.to.plot, my.map, area.name)
-     rm(list = ls(pattern = "temp*"))
-     
- 
-```
-
-This improved plot give a better sense of the distribution of records. The contour lines mark estimates of equal observation density. The visual overlay of the two density plots is assisted by the use of transparency and coloured contour lines. Note that in the East, the county of Rutland supports both populations. There is some overlap in the extreme West. Centrally the population is almost exclusively double brooded. The picture is far more complex than expected.
-
-
-## Pre 1980 records
-
-Pre 1980 the taxon was noted to be single brooded and tended to be confined to the Northern part of the county.
-
-### Pre 1980 distribution
-
-```{r Pre 1985 distribution}
-
-temp.filter.year <- 1980
-data.to.plot <- Green.Carpet.Data[Green.Carpet.Data$YYYY < temp.filter.year,]
-    area.name <- paste("Pre",temp.filter.year, "data", sep = " ")
-    
-    # Build the map in layers
-     my.map <- ggplot() +  ggtitle(area.name) + 
-       geom_path(data =ll_leics_df, aes(x = long, y = lat, group = group)) + 
-
-       # Pure double brooded density and points
+       # Observation density
        stat_density2d(  aes( x = Long, 
                              y = Lat, 
                              fill = ..level.., 
                              alpha = ..level.. ,
-                            colour = Broods ), 
+                            colour = "black" ), 
                             size = .5, bins = 8, 
                             data = data.to.plot, 
                             geom = "polygon", 
@@ -739,7 +375,7 @@ data.to.plot <- Green.Carpet.Data[Green.Carpet.Data$YYYY < temp.filter.year,]
                             show.legend = FALSE, 
                            inherit.aes = FALSE) +
       geom_point(data = data.to.plot, 
-                 aes(x = Long, y = Lat, colour = Broods, alpha=.8)) +
+                 aes(x = Long, y = Lat,  alpha=.8)) +
       coord_map(projection = "mercator") + 
           theme(axis.line=element_blank(),
           axis.text.x=element_blank(),
@@ -747,7 +383,7 @@ data.to.plot <- Green.Carpet.Data[Green.Carpet.Data$YYYY < temp.filter.year,]
           axis.ticks=element_blank(),
           axis.title.x=element_blank(),
           axis.title.y=element_blank(),
-          legend.position="right",
+          legend.position="none",
           panel.background=element_blank(),
           panel.border=element_blank(),
           panel.grid.major=element_blank(),
@@ -762,10 +398,7 @@ data.to.plot <- Green.Carpet.Data[Green.Carpet.Data$YYYY < temp.filter.year,]
      
      
    print(my.map)
-#     cat('\r\n\r\n') # Add new lines
-    
- #    Phenology.Plot(area.name, data.to.plot$DOY)
- #    cat('\r\n\r\n')
+
 # Clean up
      rm(data.to.plot, my.map, area.name)
      rm(list = ls(pattern = "temp*"))
@@ -773,33 +406,3 @@ data.to.plot <- Green.Carpet.Data[Green.Carpet.Data$YYYY < temp.filter.year,]
  
 ```
 
-
-### Pre 1980 Phenology
-
-```{r Pre-1980 phenology}
-data.to.plot<- Green.Carpet.Data[Green.Carpet.Data$YYYY < 1980,]
-
-
-
- temp.my.plot <- 
-   ggplot(data.to.plot,aes(x=as.numeric(data.to.plot$DOY) ) ) + 
-   geom_density(fill="Red", bw = 4) +
-   labs(title="Phenology",x="Day of Year", y = "Density") +
-  # Uncomment these lines to add vertical lines through the brood peaks
-  geom_vline(aes(xintercept=Brood.peaks[1]), color="blue") + 
-  geom_vline(aes(xintercept=Brood.peaks[2]), color="blue") +
-  geom_vline(aes(xintercept=Brood.peaks[3]), color="blue") +
-  geom_vline(aes(xintercept=Brood.peaks[4]), color="blue") +
-   xlim(1, 365) # Set the x-axis limits.
- 
-temp.my.plot
-
-# This line saves the plot
-ggsave("images/Phenology-density-pre-1985.png", device = "png")
-
-# Clean up
-rm(list = ls(pattern = "temp*"))
-
-
-
-```
