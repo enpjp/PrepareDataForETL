@@ -1,3 +1,5 @@
-name: "01: My Template"
-description: A minimal example, whereby the default YAML settings are altered and the default text is removed.
+name: "01: A demonstration template"
+description: Derives a series of plots using the package data.
+Not really intended for production use, but ensures that all the required
+packages are installed and working correctly.
 create_dir: true
