@@ -1,0 +1,4 @@
+name: "04: Map from polyline"
+description: >
+ Create an R compatible map from a QGis polyline file.
+create_dir: False

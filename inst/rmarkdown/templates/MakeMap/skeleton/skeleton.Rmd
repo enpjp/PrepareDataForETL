@@ -1,0 +1,158 @@
+---
+title: "Untitled"
+author: "Your Name"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    toc: no
+  html_document:
+    fig_caption: yes
+    theme: flatly
+    toc: no
+---
+
+
+
+```{r Setup, include=TRUE, echo=TRUE, warning=FALSE, message=FALSE, error=FALSE, results='asis'}
+# Set code chunk options for all chunks
+# These can be overridden at the chunk level, but setting global options 
+# ensures consistency of chunk behaviour.
+# To print a version of this document without code set echo = FALSE. 
+#Include false will ignore the code chunk completely!
+knitr::opts_chunk$set(include = TRUE, 
+                      echo = TRUE, 
+                      warning=FALSE, 
+                      message=FALSE, 
+                      error=FALSE, 
+                      results='asis')
+
+
+
+```
+
+
+```{r Libraries}
+
+# Explicitly load libraries here. Missing libraries are installed with the 
+# install.packages() function at the command line or through the 
+# Tools >> install packages menu of R studio.
+# Note that install.packages requires the named ;library to be enclosed in
+# quotation marks.
+
+library(rgdal) # Need this for the geospatial code.
+library(ggmap)
+library(raster)
+library(tidyverse)
+library(plyr)
+library(broom)
+library(ggpolypath)
+library(PrepareDataForETL)
+```
+
+
+
+
+#  Map
+
+The shape files for all UK counties are available from National Biodiversity Network (2018) Mapping - Watsonian Vice Counties - National Biodiversity Network. Available at: https://nbn.org.uk/tools-and-resources/nbn-toolbox/watsonian-vice-county-boundaries/ (Accessed: 11 February 2019).
+
+```{r Load map, include=False}
+
+# Run this chunk to do a quick check plot.
+
+my.polyline.data <-readOGR( "map/Derbyshire_polyline.shp") 
+# Note that sometimes we need a "." to point to the current directory.
+# This is a driver dependent issue that varies according to installation.
+# my.polyline.data <-readOGR(".","VC55/Leicestershire_polyline.shp") 
+
+```
+
+```{r Check Map}
+# Now a test plot
+plot(my.polyline.data, col = "black")
+```
+
+
+```{r Transform to dataframe, include=False}
+# Now to transform into dataframe
+my.polyline.df <- tidy(my.polyline.data) # Need to load broom for this
+
+# Our data frame is in ordnance survey units and the columns 
+# are mislabelled as lat long
+# Now to reproject the units as Lat Long in WGS84
+# Rename the columns
+    colnames(my.polyline.df)[colnames(my.polyline.df)=="long"] <- "Easting"
+    colnames(my.polyline.df)[colnames(my.polyline.df)=="lat" ] <- "Northing"
+# Now extract the co-ordinate columns
+temp.df.coords <-my.polyline.df[,c("Easting","Northing")]
+# And make sure they are numeric
+    temp.df.coords[[1]] %>% as.numeric
+    temp.df.coords[[2]] %>% as.numeric
+# We happen to know that the data is UK national grid so use the proj4string 
+    # = CRS("+init=epsg:27700")
+    temp.sp.coords <- sp::SpatialPoints(temp.df.coords, sp::CRS("+init=epsg:27700"))
+
+# So now we reproject the data in WGS84
+    temp.sp.coords.84 <- sp::spTransform(temp.sp.coords, sp::CRS("+init=epsg:4326"))
+    temp.sp.coord.df <- as.data.frame(temp.sp.coords.84)
+    temp.sp.coords.output <- set_colnames(temp.sp.coord.df, c("long","lat"))
+
+# Now join this back to the dataframe putting it at the front of the df.
+    my.polyline.df <- cbind(temp.sp.coords.output,my.polyline.df)
+# The dataframe now has both sets of coordinates available which may be useful. 
+    #Use lat long for plotting with ggplot.
+
+# We have lost the @Data slot so need to add it back.
+# Create a temporary dataframe with all the data
+  temp_df <- data.frame(my.polyline.data@data)
+
+# Create and append "id" column with the same index as my.polyline.df 
+  temp_df$id <- seq(0,nrow(temp_df)-1)
+
+# Now join the data
+  my.polyline.df <- join(my.polyline.df, temp_df, by="id")
+
+temp.my.map <- ggplot(data = my.polyline.df) + # Set the data source
+  geom_path( aes(x = long, y = lat, group = group)) + # Plot the polygon lines
+  coord_equal() + # Set equal scaling for both axes.
+  coord_map(projection = "mercator") + # Set a mercator projection
+  theme(axis.line=element_blank(), # Override the default theme
+      axis.text.x=element_blank(), # No x axis
+      axis.text.y=element_blank(), # No y axis
+      axis.ticks=element_blank(),  # No axis tick
+      axis.title.x=element_blank(),# No x axis title
+      axis.title.y=element_blank(),# No y axis title
+      legend.position="right",# Legend right (if we have a legend)
+      panel.background=element_blank(), # No background colour
+      panel.border=element_blank(), # No borader colour
+      panel.grid.major=element_blank(), # No major grid lines
+      panel.grid.minor=element_blank() # No minor grid lines
+    )
+
+# Using separate chunks to suppress unwanted output.
+
+```
+
+```{r check output}
+temp.my.map
+
+# Clean up
+
+rm(list = ls(pattern = "temp*"))
+
+```
+
+
+
+```{r Save map}
+# Finally save the object by uncommenting this line
+dir.create("data-raw")
+saveRDS(my.polyline.df, file = "data-raw/my.polyline.df.rds")
+
+# usethis::use_data(my.polyline.df.rds, overwrite = TRUE) 
+# Use this to actually add the data to a package.
+
+```
+
+
+
