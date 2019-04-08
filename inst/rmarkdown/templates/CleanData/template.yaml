@@ -1,0 +1,4 @@
+name: "03:Simple Data Cleaning"
+description: >
+ Basic cleaning of dates and coordinates.
+create_dir: true

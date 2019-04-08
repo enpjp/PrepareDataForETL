@@ -1,0 +1,137 @@
+---
+title: "Untitled"
+author: "Your Name"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    fig_caption: yes
+    theme: flatly
+    toc: yes
+---
+
+
+```{r setup, include=TRUE, echo=FALSE, warning=FALSE, message=FALSE, error=FALSE, results='asis'}
+# Set code chunk options for all chunks
+# These can be overridden at the chunk level, but setting global options 
+# ensures consistency of chunk behaviour.
+# To print a version of this document without code set echo = FALSE. 
+#Include false will ignore the code chunk completely!
+
+knitr::opts_chunk$set(include = TRUE, 
+                      echo = FALSE, 
+                      warning=FALSE, 
+                      message=FALSE, 
+                      error=FALSE, 
+                      results='asis',
+                      out.width='\\textwidth') 
+# Globally set the figure width here in inches.
+
+
+library(rgdal)
+library(ggmap)
+library(rgeos)
+library(maptools)
+library(readxl)
+#library(devtools)
+#library(roxygen2)
+library(tidyverse)
+library(PrepareDataForETL)
+
+
+```
+
+## Load data
+
+Start by loading the package data:
+
+```{r data}
+# Uncomment this line to load the package default data
+my.data <- data("Green.Carpet.Data")
+# Adapt this by using the import function in R Studio and cut and paste
+# The exact command from the console. Use the interactive menu to set data types
+# such as dates.
+# my.data <- read_excel("Data.xlsx") 
+# my.data <- GreenCarpetDerbys <- read_excel("GreenCarpetDerbys.xlsx", 
+#      col_types = c("date", "numeric", "text", 
+#          "text", "text", "text", "text", "text", 
+#         "numeric"))
+
+summary(my.data)
+# Use view to check the data
+# Rename any columns using this type of syntax
+colnames(my.data)[5] <- c("Grid.Reference")
+# Keep the named columns
+temp.keep <- c("Date", "Year", "Grid.Reference")
+# Do it this way so you do not make a mistake
+temp.my.data <- my.data[,temp.keep]
+my.data <- temp.my.data
+```
+
+
+\newpage
+## Clean the dates
+
+PrepareDataForETL has some helper functions:
+Clean.Dates takes in a variety of date formats, including Excel, and produces a standard set of ISO format dates with exactly the same number of rows:
+
+```{r clean-dates}
+
+my.clean.dates <- Clean.Dates(my.data$Date) %>% as.data.frame()
+# Now check which rows have valid dates
+rows.with.dates <- grepl("\\d{4}-\\d{2}-\\d{2}",my.clean.dates$YYMMDD )
+# Make a list of those rows
+rows.to.keep <- which(rows.with.dates)
+# Bind columns of darta
+my.data <- cbind(my.data, my.clean.dates)
+
+# Only keep those rows with data.
+my.data <- my.data[rows.to.keep,]
+
+```
+
+
+\newpage
+## Including Plots
+
+We can now produce a phenology plot of all the records using the day of year DOY
+
+```{r A first phenology plot}
+
+
+ temp.my.plot <- 
+  ggplot(my.data,aes(x=as.numeric(my.data$DOY) ) ) + 
+  geom_density(fill="Red", bw = 4) +
+   labs(title="Phenology",x="Day of Year", y = "Density") +
+   xlim(1, 365) # Set the x-axis limits.
+ 
+temp.my.plot
+
+# This line saves the plot in an images subdirectory
+dir.create("images")
+ggsave("images/Phenology-density.pdf", device = "pdf")
+
+# Clean up
+rm(list = ls(pattern = "temp*"))
+
+```
+
+
+Now to plot a map of all the records
+
+```{r make-map,echo=FALSE, message=FALSE, warning=FALSE }
+library(rgeos)
+# The current function for getting the gridreferences as co-ordinates is fussy
+# so suppress the warnings.
+# we need to supply an outline map. This is one I prepared earlier
+data("leics")
+# Check the documentation for the source of the map data
+
+Plot.Maps("test name", my.data$Grid.Reference, leics)
+
+
+
+```
+
+
