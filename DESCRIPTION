@@ -1,7 +1,7 @@
 Package: PrepareDataForETL
 Title: Prepares Data For Extract Transform And Load
-Version: 0.0.0.9000
-Authors@R: person("Paul", "Palmer", email = "palmerpjp@gmail.com", role = c("aut", "cre"))
+Version: 0.0.1.0000
+Authors@R: person("Paul", "Palmer", email = "p.j.palmer@lboro.ac.uk", role = c("aut", "cre"))
 Description: This package contains a series of utility functions for
    cleaning and transforming data into a reuseable format.
 Depends:  R (>= 3.5),
