@@ -1,6 +1,6 @@
-#' Outline Map of Leiecstershire
+#' Outline Map of Derbyshire
 #'
-#' A dataset containing an outline map of Leicestershire and Rutland
+#' A dataset containing an outline map of Derbyshire
 #'
 #' @section Warning:
 #'
@@ -10,9 +10,9 @@
 #'
 #' @format S4 Map object SpatialPolygonsDataFram
 #' \describe{
-#'   \item{NAME}{Factor including Leicestershire and Rutland}
-#'   \item{AREA}{Area} Numeric value.
+#'   \item{NAMES}{Factor} Adjoining county
+#'   \item{REGION}{Factor} Single value in this case: England.
 #'
 #' }
 #' @source \url{https://nbn.org.uk/tools-and-resources/nbn-toolbox/watsonian-vice-county-boundaries/}
-"leics"
+"derbyshire"
