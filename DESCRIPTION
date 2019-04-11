@@ -20,6 +20,7 @@ Imports:  rgdal,
           fossil,
           rgeos,
           maptools,
+          mapproj,
           rnrfa,
           MASS
 License: MIT + file LICENSE
