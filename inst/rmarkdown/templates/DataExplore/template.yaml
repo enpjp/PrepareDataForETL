@@ -1,4 +1,4 @@
 name: "02: Bird Journal to Nature Spot"
 description: >
  Converts Bird Journal files to naturespot format.
-create_dir: true
+create_dir: FALSE

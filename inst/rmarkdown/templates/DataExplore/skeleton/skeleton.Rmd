@@ -13,37 +13,46 @@ output:
 
 # Reading and converting Bird Journal files in the bird journal format
 
-Run this in the same directory as the Bird Journal file to convert.
-```{r}
-# Reading and converting Bird Journal files in the bird journal format
-## Libraries
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Libraries
 library(gridExtra)
 library(magrittr)
 library(dplyr)
 library(data.table)
 library(tidyr)
-
-## libraries
 library(rgdal) # for spTransform
 library(stringr)
+
+# Now for some useful short cuts
 
 ### shortcuts
 ukgrid <- "+init=epsg:27700"
 latlong <- "+init=epsg:4326"
 bng <- '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +datum=OSGB36 +units=m +no_defs'
 
-## Read
+```
+
+# Reading and converting Bird Journal files in the bird journal format
+
+Run this in the same directory as the Bird Journal file to convert.
+```{r Read files, echo=FALSE}
+# Read the files. This needs to be altered for each set of files
 # Run from the same directory as the data
 file_for_input <- c("Bird Journal Export.csv")
 
-# Name all columns
-Journal_names <- c("Date", "Time", "Common.Name", "Name","Location", "Parent.Location", "Count", "GeoTag", "Gender" ,"Heard.Only", "Notes")
-#Note that columns only show when they have data in the observation report. This means that the number o columns can vary!
-# Also Name - the scientific name, is always blank.
+# And a file for output
+file_for_output <- c("converted-to-natureSpot.csv")
 
-#my.csv.data <- read.csv (file= file_for_input, col.names = Journal_names, header = TRUE, na.strings = "NA", skip = 0, check.names = TRUE, strip.white = TRUE, blank.lines.skip = TRUE, stringsAsFactors=FALSE)
-# Lets read the csv data as is
+# Now read the files
 my.csv.data <- read.csv (file= file_for_input, na.strings = "NA", skip = 0, check.names = TRUE, strip.white = TRUE, blank.lines.skip = TRUE, stringsAsFactors=FALSE)
+
+```
+
+## Process the files
+
+
+```{r process, echo=FALSE}
 
 # Convert to a data table
 my.data <- my.csv.data %>% as.data.table
@@ -51,13 +60,9 @@ my.data <- my.csv.data %>% as.data.table
 my.data[ my.data$Location. == "" & my.data == ""] <- NA
 
 
-# The Bird Journal Format does not repeat values so we have to fill them in before we can use the data
-# Lots of columns so lets use a loop
-  for(my.col in 1:13) {
-  test.place <- fill(my.data, names(my.data)[my.col])
-  my.data <- test.place
-  }
-rm(test.place) # Remove the scratchpad
+ for(my.col in 1:ncol(my.data)) {
+  my.data <- fill(my.data, names(my.data)[my.col])
+ }
 
 # Create the columns we need
 # Make a list of field names to ignore because we are already handling them
@@ -88,21 +93,29 @@ my.merge.col <- setdiff(names(my.data), white.list)
 # Now recode some of the entries
 
 my.data$Heard.Only[my.data$Heard.Only %like% "Yes" ] <- "Heard only."
+my.data$Good.View[my.data$Good.View %like% "Yes" ] <- "Good view."
 
 my.data$merge.notes <- apply(my.data[ , my.merge.col , with=FALSE] , 1 , paste , collapse = " " )
 # Now remove the NAs
 my.data$merge.notes <- gsub("NA", "", my.data$merge.notes)
 
+
+
+```
+
+## Co-ordinates
+
+```{r}
 ### Create coordinates variable
 coords <- cbind(Easting = as.numeric(as.character(my.data$Longitude.)),
                 Northing = as.numeric(as.character(my.data$Latitude.)))
 coords_df <- as.data.frame(coords)
 # Need to drop the rows which have NAs
 coords.na <- which(is.na(coords[,1]))
+if (length(coords.na) > 0) {
 coords <- coords[-coords.na,]
 coords_df <- as.data.frame(coords)
-my.data <- my.data[-coords.na]
-plot(coords)
+my.data <- my.data[-coords.na]}
 
 ### Create the SpatialPointsDataFrame
 dat_SP <- SpatialPointsDataFrame(coords_df,
@@ -149,6 +162,14 @@ my.data$GeoTag[my.row.number] <- df_working$GridRef[my.row.number]
 
 }
 
+```
+
+
+And finaly output the file
+
+```{r}
+
+
 ## Now get the naturespot output
 NatureSpot <- data.frame(
 	Species.name = my.data$Scientific.Name.,
@@ -161,10 +182,16 @@ NatureSpot <- data.frame(
 	Grid.ref= my.data$GeoTag
 
 ) 
+# Quirks  Recoding 
+NatureSpot$Species.name <- gsub("Alopochen aegyptiaca", 
+                                "Alopochen aegyptiacus", 
+                                NatureSpot$Species.name)
+
 print(head(NatureSpot))
-write.csv(NatureSpot, file = "Naturespot_upload.csv", row.names=FALSE )
+write.csv(NatureSpot, file = file_for_output, row.names=FALSE )
 #rm(NatureSpot,data)
-gc()
 
 ```
+
+
 
