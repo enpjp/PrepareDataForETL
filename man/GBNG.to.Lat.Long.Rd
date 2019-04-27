@@ -13,5 +13,5 @@ GBNG.to.Lat.Long(GBNG)
 Latitiude and Longitude
 }
 \description{
-This function take a GB national Grid reference an return Lat Long
+This function takes a GB national Grid reference an return Lat Long
 }

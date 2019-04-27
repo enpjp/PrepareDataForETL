@@ -2,6 +2,7 @@
 
 export(Clean.Dates)
 export(GBNG.to.Lat.Long)
+export(Lat.Long.to.GBNG)
 export(Phenology.Plot)
 export(Plot.Maps)
 export(Plot.Maps.Density)

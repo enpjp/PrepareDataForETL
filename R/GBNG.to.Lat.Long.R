@@ -1,6 +1,6 @@
 #' GBNG.to.Lat.Long
 #'
-#' This function take a GB national Grid reference an return Lat Long
+#' This function takes a GB national Grid reference an return Lat Long
 #'
 #'
 #' @param GBNG Must be a spatial object with the data to plot.
