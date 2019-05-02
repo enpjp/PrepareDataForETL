@@ -186,6 +186,9 @@ NatureSpot <- data.frame(
 NatureSpot$Species.name <- gsub("Alopochen aegyptiaca", 
                                 "Alopochen aegyptiacus", 
                                 NatureSpot$Species.name)
+NatureSpot$Species.name <- gsub("Scythris hexadactyla", 
+                                "Alucita hexadactyla", 
+                                NatureSpot$Species.name)
 
 print(head(NatureSpot))
 write.csv(NatureSpot, file = file_for_output, row.names=FALSE )
