@@ -4,7 +4,8 @@
 \name{Green.Carpet.Data}
 \alias{Green.Carpet.Data}
 \title{Green Carpet Data for Leicestershire VC55.}
-\format{A data frame with 2207 rows and 14 variables:
+\format{
+A data frame with 2207 rows and 14 variables:
 \describe{
   \item{Code}{Bradley Fletcher Code}
   \item{Taxon}{Taxon name}
@@ -21,7 +22,8 @@
   \item{Long}{Longitude as WSGS84}
   \item{Lat}{Latitude as WSGS84}
 
-}}
+}
+}
 \usage{
 Green.Carpet.Data
 }

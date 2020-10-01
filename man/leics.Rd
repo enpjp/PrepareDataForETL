@@ -4,12 +4,14 @@
 \name{leics}
 \alias{leics}
 \title{Outline Map of Leiecstershire}
-\format{S4 Map object SpatialPolygonsDataFram
+\format{
+S4 Map object SpatialPolygonsDataFram
 \describe{
   \item{NAME}{Factor including Leicestershire and Rutland}
   \item{AREA}{Area} Numeric value.
 
-}}
+}
+}
 \source{
 \url{https://nbn.org.uk/tools-and-resources/nbn-toolbox/watsonian-vice-county-boundaries/}
 }
