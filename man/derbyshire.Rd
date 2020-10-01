@@ -4,12 +4,14 @@
 \name{derbyshire}
 \alias{derbyshire}
 \title{Outline Map of Derbyshire}
-\format{S4 Map object SpatialPolygonsDataFram
+\format{
+S4 Map object SpatialPolygonsDataFram
 \describe{
   \item{NAMES}{Factor} Adjoining county
   \item{REGION}{Factor} Single value in this case: England.
 
-}}
+}
+}
 \source{
 \url{https://nbn.org.uk/tools-and-resources/nbn-toolbox/watsonian-vice-county-boundaries/}
 }
