@@ -49,7 +49,11 @@ And then:
 
      library(PrepareDataForETL)
 
+
+*If you see any errors they are almost certainly due to your system requiring an update.* The current behaviour of install_github converts minor warnings into errors halting the install process. For example, if your R install is a minor version out of date, multiple warning messages may be generated during install informing you that dependencies were built with a more recent ersion of R.
+
 Repeating these two steps will download any new updates from the remote file store.
+
 
 ## Using R studio
 If you complete the install without errors then you will be able to create "markdown" files using my templates by going to:
