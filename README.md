@@ -27,7 +27,7 @@ The is a YouTube video of these instructions being used on a Mac at: [Go to YouT
 
 You will need to cut and paste  the code snippets below in the R console in RStudio.
 
-If you have not updated R in a while update all your installed packages. This may take a while so get it to update all.
+If you have not updated R in a while update all your installed packages. This may take a while so get it to update all while you take a break.
 
      update.packages(ask = FALSE)
 
